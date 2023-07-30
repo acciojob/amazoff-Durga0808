@@ -76,7 +76,7 @@ public class OrderRepository {
     public Integer getOrdersLeftAfterGivenTimeByPartnerId(String time, String partnerId) {
         Integer count=0;
         //converting given string time to integer
-        String arr[]=time.split(":"); //12:45
+        String[] arr =time.split(":"); //12:45
         int hr=Integer.parseInt(arr[0]);
         int min=Integer.parseInt(arr[1]);
 
