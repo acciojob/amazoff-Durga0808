@@ -20,26 +20,26 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("orders")
 public class OrderController {
-HashMap<String,List<String>>PartnerOrderDB=new HashMap<>();
-HashMap<String,String>OrderPartnerDB=new HashMap<>();
-@Autowired
-private OrderService osObj;
-private DelivaryService dpsObj;
+
+
+OrderService orderService=new OrderService();
+
     @PostMapping("/add-order")
     public ResponseEntity<String> addOrder(@RequestBody Order order){
-        osObj.addOrder(order);
-        System.out.print(order.getId());
+        orderService.addOrder(order);
+
         return new ResponseEntity<>("New order added successfully", HttpStatus.CREATED);
     }
     @GetMapping("/test")
     public String test(){
+        System.out.print("Api called");
         return "test Sucess";
     }
 
 
     @PostMapping("/add-partner/{partnerId}")
     public ResponseEntity<String> addPartner(@PathVariable String partnerId){
-        dpsObj.addPartner(partnerId);
+        orderService.addPartner(partnerId);
         return new ResponseEntity<>("New delivery partner added successfully", HttpStatus.CREATED);
     }
 
@@ -47,10 +47,7 @@ private DelivaryService dpsObj;
     public ResponseEntity<String> addOrderPartnerPair(@RequestParam String orderId, @RequestParam String partnerId){
 
         //This is basically assigning that order to that partnerId
-        List<String>orders=PartnerOrderDB.getOrDefault(partnerId,new ArrayList<>());
-        orders.add(orderId);
-        PartnerOrderDB.put(partnerId,orders);
-        OrderPartnerDB.put(orderId,partnerId);
+        orderService.addOrderPartnerPair(orderId,partnerId);
 
         return new ResponseEntity<>("New order-partner pair added successfully", HttpStatus.CREATED);
     }
@@ -60,7 +57,7 @@ private DelivaryService dpsObj;
 
         Order order= null;
         //order should be returned with an orderId.
-        order=osObj.getOrderById(orderId);
+        order=orderService.getOrderById(orderId);
 
         return new ResponseEntity<>(order, HttpStatus.CREATED);
     }
@@ -71,7 +68,7 @@ private DelivaryService dpsObj;
         DeliveryPartner deliveryPartner = null;
 
         //deliveryPartner should contain the value given by partnerId
-        deliveryPartner=dpsObj.getPartnerById(partnerId);
+        deliveryPartner=orderService.getPartnerById(partnerId);
 
         return new ResponseEntity<>(deliveryPartner, HttpStatus.CREATED);
     }
@@ -82,7 +79,7 @@ private DelivaryService dpsObj;
         Integer orderCount = 0;
 
         //orderCount should denote the orders given by a partner-id
-        orderCount=PartnerOrderDB.getOrDefault(partnerId,new ArrayList<>()).size();
+        orderCount=orderService.getOrderCountByPartnerId(partnerId);
 
         return new ResponseEntity<>(orderCount, HttpStatus.CREATED);
     }
@@ -92,7 +89,7 @@ private DelivaryService dpsObj;
         List<String> orders = null;
 
         //orders should contain a list of orders by PartnerId
-        orders=PartnerOrderDB.getOrDefault(partnerId,new ArrayList<>());
+        orders=orderService.getOrdersByPartnerId(partnerId);
         return new ResponseEntity<>(orders, HttpStatus.CREATED);
     }
 
@@ -101,7 +98,7 @@ private DelivaryService dpsObj;
         List<String> orders = null;
 
         //Get all orders
-        orders=osObj.getAllOrders();
+        orders=orderService.getAllOrders();
 
         return new ResponseEntity<>(orders, HttpStatus.CREATED);
     }
@@ -111,9 +108,7 @@ private DelivaryService dpsObj;
         Integer countOfOrders = 0;
 
         //Count of orders that have not been assigned to any DeliveryPartner
-        Integer allorder=osObj.getOrders();
-        Integer assiged=OrderPartnerDB.size();
-        countOfOrders=allorder-assiged;
+        countOfOrders=orderService.getCountOfUnassignedOrders();
 
         return new ResponseEntity<>(countOfOrders, HttpStatus.CREATED);
     }
@@ -122,17 +117,9 @@ private DelivaryService dpsObj;
     public ResponseEntity<Integer> getOrdersLeftAfterGivenTimeByPartnerId(@PathVariable String time, @PathVariable String partnerId){
 
         Integer countOfOrders = 0;
-        int t=Integer.parseInt(time.substring(0,2))*60+Integer.parseInt(time.substring(3,5));
-
 
         //countOfOrders that are left after a particular time of a DeliveryPartner
-        List<String>orders=PartnerOrderDB.getOrDefault(partnerId,new ArrayList<>());
-            for(String id:orders){
-                if(osObj.getOrderById(id).getDeliveryTime()>t){
-                    countOfOrders+=1;
-                }
-            }
-
+        countOfOrders=orderService.getOrdersLeftAfterGivenTimeByPartnerId(time,partnerId);
         return new ResponseEntity<>(countOfOrders, HttpStatus.CREATED);
     }
 
@@ -141,12 +128,7 @@ private DelivaryService dpsObj;
         String time = null;
 
         //Return the time when that partnerId will deliver his last delivery order.
-        List<String>orders=PartnerOrderDB.getOrDefault(partnerId,new ArrayList<>());
-        String orderid=orders.get(orders.size()-1);
-        int t=osObj.getOrderById(orderid).getDeliveryTime();
-        int mm=t%60;
-        int hh=t/60;
-        time=Integer.toString(hh)+":"+Integer.toString(mm);
+        time=orderService.getLastDeliveryTimeByPartnerId(partnerId);
 
         return new ResponseEntity<>(time, HttpStatus.CREATED);
     }
@@ -156,12 +138,7 @@ private DelivaryService dpsObj;
 
         //Delete the partnerId
         //And push all his assigned orders to unassigned orders.
-        List<String>orders=PartnerOrderDB.getOrDefault(partnerId,new ArrayList<>());
-        PartnerOrderDB.remove(partnerId);
-        for(String id:orders){
-            OrderPartnerDB.remove(id);
-        }
-
+        orderService.deletePartnerById(partnerId);
         return new ResponseEntity<>(partnerId + " removed successfully", HttpStatus.CREATED);
     }
 
@@ -170,11 +147,7 @@ private DelivaryService dpsObj;
 
         //Delete an order and also
         // remove it from the assigned order of that partnerId
-        String pid=OrderPartnerDB.get(orderId);
-        OrderPartnerDB.remove(orderId);
-        List<String>orders=PartnerOrderDB.get(pid);
-        orders.remove(orderId);
-        PartnerOrderDB.put(pid,orders);
+        orderService.deleteOrderById(orderId);
         return new ResponseEntity<>(orderId + " removed successfully", HttpStatus.CREATED);
     }
 }
